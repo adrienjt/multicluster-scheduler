@@ -1,0 +1,99 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world-us-west-2
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: hello-world
+      region: us-west-2
+  template:
+    metadata:
+      annotations:
+        multicluster.admiralty.io/elect: ""
+        multicluster.admiralty.io/no-reservation: ""
+        multicluster.admiralty.io/use-constraints-from-spec-for-proxy-pod-scheduling: ""
+      labels:
+        app: hello-world
+        region: us-west-2
+    spec:
+      nodeSelector:
+        topology.kubernetes.io/region: us-west-2
+      containers:
+        - image: adamgolab/hello-world
+          name: hello-world
+          env:
+            - name: PORT
+              value: "80"
+            - name: WORLD
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          ports:
+            - containerPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world-eu-west-3
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: hello-world
+      region: eu-west-3
+  template:
+    metadata:
+      annotations:
+        multicluster.admiralty.io/elect: ""
+        multicluster.admiralty.io/no-reservation: ""
+        multicluster.admiralty.io/use-constraints-from-spec-for-proxy-pod-scheduling: ""
+      labels:
+        app: hello-world
+        region: eu-west-3
+    spec:
+      nodeSelector:
+        topology.kubernetes.io/region: eu-west-3
+      containers:
+        - image: adamgolab/hello-world
+          name: hello-world
+          env:
+            - name: PORT
+              value: "80"
+            - name: WORLD
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-world
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: hello-world
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: hello-world
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+spec:
+  rules:
+    - host: hello-world.user-5tlh8.admiralty.cloud
+      http:
+        paths:
+          - path: /*
+            backend:
+              serviceName: hello-world
+              servicePort: 80
